@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calculadora</title>
+<style>
+:root{--bg:#f2f3f7;--key:#fff;--key-t:#12141c;--op:#6c4dff;--op-t:#fff;--fn:#e3e5ee;--dim:#6b7088;--txt:#12141c;
+ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+@media (prefers-color-scheme:dark){:root{--bg:#0b0d12;--key:#171b24;--key-t:#f3f4fa;--fn:#252a36;--dim:#8a90a8;--txt:#f3f4fa;}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;margin:0;}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center;}
+.calc{width:100%;max-width:420px;height:100%;display:flex;flex-direction:column;padding:14px;}
+.screen{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-end;padding:10px 12px 18px;min-height:120px;overflow:hidden;}
+.expr{font-size:16px;color:var(--dim);min-height:22px;}
+.val{font-size:52px;font-weight:600;line-height:1.1;word-break:break-all;text-align:right;}
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+button{border:0;border-radius:22px;height:68px;font-size:24px;font-weight:600;background:var(--key);color:var(--key-t);cursor:pointer;font-family:inherit;transition:transform .08s;}
+button:active{transform:scale(.94);}
+button.fn{background:var(--fn);} button.op{background:var(--op);color:var(--op-t);}
+</style>
+</head>
+<body>
+<div class="calc">
+  <div class="screen"><div class="expr" id="expr"></div><div class="val" id="val">0</div></div>
+  <div class="keys" id="keys">
+    <button class="fn" data-k="C">C</button><button class="fn" data-k="±">±</button><button class="fn" data-k="%">%</button><button class="op" data-k="÷">÷</button>
+    <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button class="op" data-k="×">×</button>
+    <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button class="op" data-k="−">−</button>
+    <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button class="op" data-k="+">+</button>
+    <button class="fn" data-k="⌫">⌫</button><button data-k="0">0</button><button data-k=",">,</button><button class="op" data-k="=">=</button>
+  </div>
+</div>
+<script>
+let cur='0', acc=null, op=null, fresh=true;
+const OPS={'+':(a,b)=>a+b,'−':(a,b)=>a-b,'×':(a,b)=>a*b,'÷':(a,b)=>a/b};
+function clean(n){
+  if(!isFinite(n)) return 'Erro';
+  let s=String(parseFloat(n.toPrecision(12)));
+  if(s.includes('e')) s=n.toExponential(6).replace('+','');
+  return s;
+}
+function fmt(s){
+  if(s==='Erro') return s;
+  if(s.includes('e')) return s.replace('.',',');
+  let [i,d]=s.split('.'); const neg=i[0]==='-'; if(neg) i=i.slice(1);
+  i=i.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  return (neg?'-':'')+i+(d!==undefined?','+d:'');
+}
+function compute(){ return clean(OPS[op](parseFloat(acc),parseFloat(cur))); }
+function render(expr){
+  const v=document.getElementById('val'), t=fmt(cur);
+  v.textContent=t; v.style.fontSize=t.length>14?'28px':t.length>10?'38px':'52px';
+  document.getElementById('expr').textContent=expr||(op?fmt(acc)+' '+op:'');
+}
+function press(k){
+  let expr='';
+  if(cur==='Erro' && k!=='C' && !/\d|,/.test(k)) return;
+  if(/^\d$/.test(k)){
+    if(fresh||cur==='Erro'){cur=k;fresh=false;}
+    else if(cur.replace(/[-.]/g,'').length<12) cur=cur==='0'?k:cur+k;
+  }else if(k===','){
+    if(fresh||cur==='Erro'){cur='0.';fresh=false;} else if(!cur.includes('.')) cur+='.';
+  }else if(OPS[k]){
+    if(op&&!fresh){acc=compute();cur=acc;} else acc=cur;
+    op=k; fresh=true;
+  }else if(k==='='){
+    if(op===null) return;
+    expr=fmt(acc)+' '+op+' '+fmt(cur)+' =';
+    cur=compute(); acc=null; op=null; fresh=true;
+  }else if(k==='%'){ cur=clean(parseFloat(cur)/100); fresh=true; }
+  else if(k==='±'){ if(cur!=='0') cur=cur[0]==='-'?cur.slice(1):'-'+cur; }
+  else if(k==='⌫'){ if(!fresh) cur=(cur.length>1&&!(cur.length===2&&cur[0]==='-'))?cur.slice(0,-1):'0'; }
+  else if(k==='C'){ cur='0'; acc=null; op=null; fresh=true; }
+  render(expr);
+}
+document.getElementById('keys').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) press(b.dataset.k);});
+document.addEventListener('keydown',e=>{
+  const m={'*':'×','/':'÷','-':'−','.':',','Enter':'=','Backspace':'⌫','Escape':'C'};
+  const k=m[e.key]||e.key;
+  if(/^[\d,+−×÷=%]$|^[⌫C]$/.test(k)){e.preventDefault();press(k);}
+});
+</script>
+</body>
+</html>
